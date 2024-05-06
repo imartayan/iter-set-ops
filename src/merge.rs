@@ -4,6 +4,7 @@ use core::cmp::Ordering;
 use core::mem::swap;
 use core::ops::DerefMut;
 
+/// Iterates over the union of many sorted deduplicated iterators.
 pub fn merge_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> MergeIterator<
@@ -15,6 +16,7 @@ pub fn merge_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     merge_iters_by(iters, T::cmp)
 }
 
+/// Iterates over the union of many sorted deduplicated iterators, using `cmp` as the comparison operator.
 pub fn merge_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + Copy + 'a>(
     iters: &mut [I],
     cmp: F,
@@ -79,6 +81,7 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize,
     }
 }
 
+/// Iterates over the union of many sorted deduplicated iterators and groups equal items into a [`Vec`] of `Option<T>`.
 pub fn merge_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> DetailedMergeIterator<
@@ -90,6 +93,7 @@ pub fn merge_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     merge_iters_detailed_by(iters, T::cmp)
 }
 
+/// Iterates over the union of many sorted deduplicated iterators and groups equal items into a [`Vec`] of `Option<T>`, using `cmp` as the comparison operator.
 pub fn merge_iters_detailed_by<
     'a,
     T,

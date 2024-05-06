@@ -1,12 +1,14 @@
 use core::cmp::Ordering;
 use core::mem::swap;
 
+/// Iterates over the intersection of many sorted deduplicated iterators.
 pub fn intersect_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> IntersectIterator<T, I, impl Fn(&T, &T) -> Ordering + 'a> {
     intersect_iters_by(iters, T::cmp)
 }
 
+/// Iterates over the intersection of many sorted deduplicated iterators, using `cmp` as the comparison operator.
 pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + Copy + 'a>(
     iters: &mut [I],
     cmp: F,
@@ -130,12 +132,14 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
     }
 }
 
+/// Iterates over the intersection of many sorted deduplicated iterators and groups equal items into a [`Vec`].
 pub fn intersect_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> DetailedIntersectIterator<T, I, impl Fn(&T, &T) -> Ordering + 'a> {
     intersect_iters_detailed_by(iters, T::cmp)
 }
 
+/// Iterates over the intersection of many sorted deduplicated iterators and groups equal items into a [`Vec`], using `cmp` as the comparison operator.
 pub fn intersect_iters_detailed_by<
     'a,
     T,
