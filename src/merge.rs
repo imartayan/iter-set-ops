@@ -18,8 +18,7 @@ pub fn merge_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + 
     iters: &mut [I],
     cmp: F,
 ) -> MergeIterator<T, I, F, impl Fn(&(usize, T), &(usize, T)) -> Ordering + 'a> {
-    let n_iters = iters.len();
-    let mut heap = BinaryHeap::with_capacity_by(n_iters, move |(_, x), (_, y)| cmp(y, x));
+    let mut heap = BinaryHeap::with_capacity_by(iters.len(), move |(_, x), (_, y)| cmp(y, x));
     for (i, iter) in iters.iter_mut().enumerate() {
         if let Some(x) = iter.next() {
             heap.push((i, x));
@@ -52,7 +51,7 @@ impl<
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.heap.is_empty() {
-            let first = {
+            let res = {
                 let mut peek = self.heap.peek_mut().unwrap();
                 let entry = peek.deref_mut();
                 if let Some(mut x) = self.iters[entry.0].next() {
@@ -63,7 +62,7 @@ impl<
                 }
             };
             while let Some(mut peek) = self.heap.peek_mut() {
-                if (self.cmp)(&first, &peek.1) == Ordering::Equal {
+                if (self.cmp)(&res, &peek.1) == Ordering::Equal {
                     let entry = peek.deref_mut();
                     if let Some(mut x) = self.iters[entry.0].next() {
                         swap(&mut entry.1, &mut x);
@@ -74,7 +73,7 @@ impl<
                     break;
                 }
             }
-            Some(first)
+            Some(res)
         } else {
             None
         }
@@ -101,19 +100,13 @@ pub fn merge_iters_detailed_by<
     iters: &mut [I],
     cmp: F,
 ) -> DetailedMergeIterator<T, I, F, impl Fn(&(usize, T), &(usize, T)) -> Ordering + 'a> {
-    let n_iters = iters.len();
-    let mut heap = BinaryHeap::with_capacity_by(n_iters, move |(_, x), (_, y)| cmp(y, x));
+    let mut heap = BinaryHeap::with_capacity_by(iters.len(), move |(_, x), (_, y)| cmp(y, x));
     for (i, iter) in iters.iter_mut().enumerate() {
         if let Some(x) = iter.next() {
             heap.push((i, x));
         }
     }
-    DetailedMergeIterator {
-        n_iters,
-        iters,
-        cmp,
-        heap,
-    }
+    DetailedMergeIterator { iters, cmp, heap }
 }
 
 pub struct DetailedMergeIterator<
@@ -123,7 +116,6 @@ pub struct DetailedMergeIterator<
     F: Fn(&T, &T) -> Ordering,
     G: Fn(&(usize, T), &(usize, T)) -> Ordering,
 > {
-    n_iters: usize,
     iters: &'a mut [I],
     cmp: F,
     heap: BinaryHeap<(usize, T), FnComparator<G>>,
@@ -141,8 +133,8 @@ impl<
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.heap.is_empty() {
-            let mut details = Vec::from_iter((0..self.n_iters).map(|_| None));
-            let (i, first) = {
+            let mut details = Vec::from_iter((0..self.iters.len()).map(|_| None));
+            let (i, res) = {
                 let mut peek = self.heap.peek_mut().unwrap();
                 let entry = peek.deref_mut();
                 if let Some(mut x) = self.iters[entry.0].next() {
@@ -153,7 +145,7 @@ impl<
                 }
             };
             while let Some(mut peek) = self.heap.peek_mut() {
-                if (self.cmp)(&first, &peek.1) == Ordering::Equal {
+                if (self.cmp)(&res, &peek.1) == Ordering::Equal {
                     let entry = peek.deref_mut();
                     if let Some(mut x) = self.iters[entry.0].next() {
                         swap(&mut entry.1, &mut x);
@@ -166,7 +158,7 @@ impl<
                     break;
                 }
             }
-            details[i] = Some(first);
+            details[i] = Some(res);
             Some(details)
         } else {
             None
