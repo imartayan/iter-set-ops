@@ -1,4 +1,5 @@
-use binary_heap_plus::{BinaryHeap, FnComparator, PeekMut};
+use binary_heap_plus::{BinaryHeap, PeekMut};
+use compare::Compare;
 use core::cmp::Ordering;
 use core::mem::swap;
 use core::ops::DerefMut;
@@ -18,12 +19,15 @@ pub fn merge_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + 
     iters: &mut [I],
     cmp: F,
 ) -> MergeIterator<T, I, F, impl Fn(&(usize, T), &(usize, T)) -> Ordering + 'a> {
-    let mut heap = BinaryHeap::with_capacity_by(iters.len(), move |(_, x), (_, y)| cmp(y, x));
+    let mut vec = Vec::with_capacity(iters.len());
     for (i, iter) in iters.iter_mut().enumerate() {
         if let Some(x) = iter.next() {
-            heap.push((i, x));
+            vec.push((i, x));
         }
     }
+    let heap = BinaryHeap::from_vec_cmp(vec, move |(_, x): &(usize, T), (_, y): &(usize, T)| {
+        cmp(y, x)
+    });
     MergeIterator { iters, cmp, heap }
 }
 
@@ -32,20 +36,15 @@ pub struct MergeIterator<
     T,
     I: Iterator<Item = T>,
     F: Fn(&T, &T) -> Ordering,
-    G: Fn(&(usize, T), &(usize, T)) -> Ordering,
+    C: Compare<(usize, T)>,
 > {
     iters: &'a mut [I],
     cmp: F,
-    heap: BinaryHeap<(usize, T), FnComparator<G>>,
+    heap: BinaryHeap<(usize, T), C>,
 }
 
-impl<
-        'a,
-        T,
-        I: Iterator<Item = T>,
-        F: Fn(&T, &T) -> Ordering,
-        G: Fn(&(usize, T), &(usize, T)) -> Ordering,
-    > Iterator for MergeIterator<'a, T, I, F, G>
+impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize, T)>> Iterator
+    for MergeIterator<'a, T, I, F, C>
 {
     type Item = T;
 
@@ -100,12 +99,15 @@ pub fn merge_iters_detailed_by<
     iters: &mut [I],
     cmp: F,
 ) -> DetailedMergeIterator<T, I, F, impl Fn(&(usize, T), &(usize, T)) -> Ordering + 'a> {
-    let mut heap = BinaryHeap::with_capacity_by(iters.len(), move |(_, x), (_, y)| cmp(y, x));
+    let mut vec = Vec::with_capacity(iters.len());
     for (i, iter) in iters.iter_mut().enumerate() {
         if let Some(x) = iter.next() {
-            heap.push((i, x));
+            vec.push((i, x));
         }
     }
+    let heap = BinaryHeap::from_vec_cmp(vec, move |(_, x): &(usize, T), (_, y): &(usize, T)| {
+        cmp(y, x)
+    });
     DetailedMergeIterator { iters, cmp, heap }
 }
 
@@ -114,20 +116,15 @@ pub struct DetailedMergeIterator<
     T,
     I: Iterator<Item = T>,
     F: Fn(&T, &T) -> Ordering,
-    G: Fn(&(usize, T), &(usize, T)) -> Ordering,
+    C: Compare<(usize, T)>,
 > {
     iters: &'a mut [I],
     cmp: F,
-    heap: BinaryHeap<(usize, T), FnComparator<G>>,
+    heap: BinaryHeap<(usize, T), C>,
 }
 
-impl<
-        'a,
-        T,
-        I: Iterator<Item = T>,
-        F: Fn(&T, &T) -> Ordering,
-        G: Fn(&(usize, T), &(usize, T)) -> Ordering,
-    > Iterator for DetailedMergeIterator<'a, T, I, F, G>
+impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize, T)>> Iterator
+    for DetailedMergeIterator<'a, T, I, F, C>
 {
     type Item = Vec<Option<T>>;
 
