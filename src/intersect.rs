@@ -1,7 +1,18 @@
 use binary_heap_plus::{BinaryHeap, FnComparator, PeekMut};
 use core::cmp::Ordering;
 
-pub fn intersect_iters<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + Copy + 'a>(
+pub fn intersect_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
+    iters: &mut [I],
+) -> IntersectIterator<
+    T,
+    I,
+    impl Fn(&T, &T) -> Ordering + 'a,
+    impl Fn(&(usize, T), &(usize, T)) -> Ordering + 'a,
+> {
+    intersect_iters_by(iters, T::cmp)
+}
+
+pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + Copy + 'a>(
     iters: &mut [I],
     cmp: F,
 ) -> IntersectIterator<T, I, F, impl Fn(&(usize, T), &(usize, T)) -> Ordering + 'a> {
@@ -91,7 +102,18 @@ mod tests {
         let it2 = 3u8..=7;
         let it3 = 2u8..=4;
         let mut iters = [it1, it2, it3];
-        let res: Vec<_> = intersect_iters(&mut iters, u8::cmp).collect();
+        let res: Vec<_> = intersect_iters(&mut iters).collect();
+        assert_eq!(res, vec![3, 4]);
+        assert!(iters[1].next().is_some());
+    }
+
+    #[test]
+    fn test_intersect_by() {
+        let it1 = 1u8..=5;
+        let it2 = 3u8..=7;
+        let it3 = 2u8..=4;
+        let mut iters = [it1, it2, it3];
+        let res: Vec<_> = intersect_iters_by(&mut iters, u8::cmp).collect();
         assert_eq!(res, vec![3, 4]);
         assert!(iters[1].next().is_some());
     }
