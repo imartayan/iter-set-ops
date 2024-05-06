@@ -1,6 +1,15 @@
 [package]
-name = "iter-sets"
+name = "iter-set-ops"
 version = "0.1.0"
+authors = ["Igor Martayan <imartayan@users.noreply.github.com>"]
+description = "Fast set operations on an arbitrary number of sorted deduplicated iterators"
+readme = "README.md"
+exclude = [".github/**", ".gitignore"]
+repository = "https://github.com/imartayan/iter-set-ops"
+homepage = "https://crates.io/crates/iter-set-ops"
+documentation = "https://docs.rs/iter-set-ops"
+license = "MIT"
+keywords = ["set", "operators", "iterator", "sort", "dedup"]
 edition = "2021"
 
 [dependencies]
