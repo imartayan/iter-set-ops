@@ -1,94 +1,132 @@
-use binary_heap_plus::{BinaryHeap, FnComparator, PeekMut};
 use core::cmp::Ordering;
+use core::mem::swap;
 
 pub fn intersect_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
-) -> IntersectIterator<
-    T,
-    I,
-    impl Fn(&T, &T) -> Ordering + 'a,
-    impl Fn(&(usize, T), &(usize, T)) -> Ordering + 'a,
-> {
+) -> IntersectIterator<T, I, impl Fn(&T, &T) -> Ordering + 'a> {
     intersect_iters_by(iters, T::cmp)
 }
 
 pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + Copy + 'a>(
     iters: &mut [I],
     cmp: F,
-) -> IntersectIterator<T, I, F, impl Fn(&(usize, T), &(usize, T)) -> Ordering + 'a> {
-    let n_iters = iters.len();
-    let mut heap = BinaryHeap::with_capacity_by(n_iters, move |(_, x), (_, y)| cmp(y, x));
-    let mut exhausted = false;
-    for (i, iter) in iters.iter_mut().enumerate() {
+) -> IntersectIterator<T, I, F> {
+    let mut front: Vec<T> = Vec::with_capacity(iters.len());
+    let mut max_index = 0;
+    let mut nonmax_index = 0;
+    if iters.is_empty() {
+        return IntersectIterator {
+            iters,
+            cmp,
+            front,
+            max_index,
+            nonmax_index,
+            exhausted: true,
+        };
+    }
+    if let Some(x) = iters[0].next() {
+        front.push(x);
+    } else {
+        return IntersectIterator {
+            iters,
+            cmp,
+            front,
+            max_index,
+            nonmax_index,
+            exhausted: true,
+        };
+    }
+    for (i, iter) in iters.iter_mut().enumerate().skip(1) {
         if let Some(x) = iter.next() {
-            heap.push((i, x));
+            if cmp(&x, &front[max_index]) == Ordering::Greater {
+                nonmax_index = max_index;
+                max_index = i;
+            }
+            front.push(x);
         } else {
-            exhausted = true;
-            break;
+            return IntersectIterator {
+                iters,
+                cmp,
+                front,
+                max_index,
+                nonmax_index,
+                exhausted: true,
+            };
         }
     }
-    let popped = Vec::with_capacity(n_iters);
     IntersectIterator {
-        n_iters,
         iters,
         cmp,
-        heap,
-        popped,
-        exhausted,
+        front,
+        max_index,
+        nonmax_index,
+        exhausted: false,
     }
 }
 
-pub struct IntersectIterator<
-    'a,
-    T,
-    I: Iterator<Item = T>,
-    F: Fn(&T, &T) -> Ordering,
-    G: Fn(&(usize, T), &(usize, T)) -> Ordering,
-> {
-    n_iters: usize,
+pub struct IntersectIterator<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> {
     iters: &'a mut [I],
     cmp: F,
-    heap: BinaryHeap<(usize, T), FnComparator<G>>,
-    popped: Vec<usize>,
+    front: Vec<T>,
+    max_index: usize,
+    nonmax_index: usize,
     exhausted: bool,
 }
 
-impl<
-        'a,
-        T,
-        I: Iterator<Item = T>,
-        F: Fn(&T, &T) -> Ordering,
-        G: Fn(&(usize, T), &(usize, T)) -> Ordering,
-    > Iterator for IntersectIterator<'a, T, I, F, G>
+impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
+    for IntersectIterator<'a, T, I, F>
 {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while !self.exhausted {
-            let (i, x) = self.heap.pop().unwrap();
-            self.popped.push(i);
-            while let Some(peek) = self.heap.peek_mut() {
-                if (self.cmp)(&x, &peek.1) == Ordering::Equal {
-                    let (j, _) = PeekMut::pop(peek);
-                    self.popped.push(j);
-                } else {
+        if self.exhausted {
+            return None;
+        }
+        let mut cmp = self.max_index.cmp(&self.nonmax_index);
+        while cmp != Ordering::Equal {
+            for (i, iter) in self.iters.iter_mut().enumerate() {
+                if i == self.max_index {
+                    continue;
+                }
+                cmp = (self.cmp)(&self.front[i], &self.front[self.max_index]);
+                while cmp == Ordering::Less {
+                    if let Some(x) = iter.next() {
+                        cmp = (self.cmp)(&x, &self.front[self.max_index]);
+                        self.front[i] = x;
+                    } else {
+                        self.exhausted = true;
+                        return None;
+                    }
+                }
+                if cmp == Ordering::Greater {
+                    self.nonmax_index = self.max_index;
+                    self.max_index = i;
                     break;
                 }
-            }
-            let n_popped = self.popped.len();
-            for j in self.popped.drain(..) {
-                if let Some(y) = self.iters[j].next() {
-                    self.heap.push((j, y));
-                } else {
-                    self.exhausted = true;
-                    break;
-                }
-            }
-            if n_popped == self.n_iters {
-                return Some(x);
             }
         }
-        None
+        let res = if let Some(mut x) = self.iters[0].next() {
+            swap(&mut x, &mut self.front[0]);
+            x
+        } else {
+            self.exhausted = true;
+            return Some(self.front.pop().unwrap());
+        };
+        self.max_index = 0;
+        self.nonmax_index = 0;
+        for (i, iter) in self.iters.iter_mut().enumerate().skip(1) {
+            if let Some(x) = iter.next() {
+                self.front[i] = x;
+                if (self.cmp)(&self.front[i], &self.front[self.max_index]) == Ordering::Greater {
+                    self.nonmax_index = self.max_index;
+                    self.max_index = i;
+                }
+            } else {
+                self.exhausted = true;
+                return Some(res);
+            }
+        }
+        Some(res)
     }
 }
 
