@@ -1,5 +1,7 @@
 use binary_heap_plus::{BinaryHeap, FnComparator, PeekMut};
 use core::cmp::Ordering;
+use core::mem::swap;
+use core::ops::DerefMut;
 
 pub fn merge_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
@@ -23,13 +25,7 @@ pub fn merge_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + 
             heap.push((i, x));
         }
     }
-    let popped = Vec::with_capacity(n_iters);
-    MergeIterator {
-        iters,
-        cmp,
-        heap,
-        popped,
-    }
+    MergeIterator { iters, cmp, heap }
 }
 
 pub struct MergeIterator<
@@ -42,7 +38,6 @@ pub struct MergeIterator<
     iters: &'a mut [I],
     cmp: F,
     heap: BinaryHeap<(usize, T), FnComparator<G>>,
-    popped: Vec<usize>,
 }
 
 impl<
@@ -56,22 +51,30 @@ impl<
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some((i, x)) = self.heap.pop() {
-            self.popped.push(i);
-            while let Some(peek) = self.heap.peek_mut() {
-                if (self.cmp)(&x, &peek.1) == Ordering::Equal {
-                    let (j, _) = PeekMut::pop(peek);
-                    self.popped.push(j);
+        if !self.heap.is_empty() {
+            let first = {
+                let mut peek = self.heap.peek_mut().unwrap();
+                let entry = peek.deref_mut();
+                if let Some(mut x) = self.iters[entry.0].next() {
+                    swap(&mut entry.1, &mut x);
+                    x
+                } else {
+                    PeekMut::pop(peek).1
+                }
+            };
+            while let Some(mut peek) = self.heap.peek_mut() {
+                if (self.cmp)(&first, &peek.1) == Ordering::Equal {
+                    let entry = peek.deref_mut();
+                    if let Some(mut x) = self.iters[entry.0].next() {
+                        swap(&mut entry.1, &mut x);
+                    } else {
+                        PeekMut::pop(peek);
+                    }
                 } else {
                     break;
                 }
             }
-            for j in self.popped.drain(..) {
-                if let Some(y) = self.iters[j].next() {
-                    self.heap.push((j, y));
-                }
-            }
-            Some(x)
+            Some(first)
         } else {
             None
         }
@@ -105,13 +108,11 @@ pub fn merge_iters_detailed_by<
             heap.push((i, x));
         }
     }
-    let popped = Vec::with_capacity(n_iters);
     DetailedMergeIterator {
         n_iters,
         iters,
         cmp,
         heap,
-        popped,
     }
 }
 
@@ -126,7 +127,6 @@ pub struct DetailedMergeIterator<
     iters: &'a mut [I],
     cmp: F,
     heap: BinaryHeap<(usize, T), FnComparator<G>>,
-    popped: Vec<usize>,
 }
 
 impl<
@@ -140,24 +140,33 @@ impl<
     type Item = Vec<Option<T>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some((i, x)) = self.heap.pop() {
+        if !self.heap.is_empty() {
             let mut details = Vec::from_iter((0..self.n_iters).map(|_| None));
-            self.popped.push(i);
-            while let Some(peek) = self.heap.peek_mut() {
-                if (self.cmp)(&x, &peek.1) == Ordering::Equal {
-                    let (j, y) = PeekMut::pop(peek);
-                    self.popped.push(j);
-                    details[j] = Some(y);
+            let (i, first) = {
+                let mut peek = self.heap.peek_mut().unwrap();
+                let entry = peek.deref_mut();
+                if let Some(mut x) = self.iters[entry.0].next() {
+                    swap(&mut entry.1, &mut x);
+                    (entry.0, x)
+                } else {
+                    PeekMut::pop(peek)
+                }
+            };
+            while let Some(mut peek) = self.heap.peek_mut() {
+                if (self.cmp)(&first, &peek.1) == Ordering::Equal {
+                    let entry = peek.deref_mut();
+                    if let Some(mut x) = self.iters[entry.0].next() {
+                        swap(&mut entry.1, &mut x);
+                        details[entry.0] = Some(x);
+                    } else {
+                        let (j, x) = PeekMut::pop(peek);
+                        details[j] = Some(x);
+                    }
                 } else {
                     break;
                 }
             }
-            details[i] = Some(x);
-            for j in self.popped.drain(..) {
-                if let Some(y) = self.iters[j].next() {
-                    self.heap.push((j, y));
-                }
-            }
+            details[i] = Some(first);
             Some(details)
         } else {
             None
