@@ -40,11 +40,12 @@ pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Orderin
     }
     for (i, iter) in iters.iter_mut().enumerate().skip(1) {
         if let Some(x) = iter.next() {
-            if cmp(&x, &front[max_index]) == Ordering::Greater {
+            front.push(x);
+            if cmp(&front[i], &front[max_index]) == Ordering::Greater {
                 nonmax_index = max_index;
                 max_index = i;
+                break;
             }
-            front.push(x);
         } else {
             return IntersectIterator {
                 iters,
@@ -86,13 +87,24 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
         }
         let mut cmp = self.max_index.cmp(&self.nonmax_index);
         while cmp != Ordering::Equal {
-            for (i, iter) in self.iters.iter_mut().enumerate() {
+            let index_iter = (self.nonmax_index..self.front.len())
+                .chain(0..self.nonmax_index)
+                .chain(self.front.len()..self.iters.len());
+            for i in index_iter {
                 if i == self.max_index {
                     continue;
                 }
+                if i >= self.front.len() {
+                    if let Some(x) = self.iters[i].next() {
+                        self.front.push(x);
+                    } else {
+                        self.exhausted = true;
+                        return None;
+                    }
+                }
                 cmp = (self.cmp)(&self.front[i], &self.front[self.max_index]);
                 while cmp == Ordering::Less {
-                    if let Some(x) = iter.next() {
+                    if let Some(x) = self.iters[i].next() {
                         cmp = (self.cmp)(&x, &self.front[self.max_index]);
                         self.front[i] = x;
                     } else {
@@ -112,7 +124,7 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
             x
         } else {
             self.exhausted = true;
-            return Some(self.front.pop().unwrap());
+            return Some(self.front.swap_remove(0));
         };
         self.max_index = 0;
         self.nonmax_index = 0;
@@ -122,10 +134,11 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
                 if (self.cmp)(&self.front[i], &self.front[self.max_index]) == Ordering::Greater {
                     self.nonmax_index = self.max_index;
                     self.max_index = i;
+                    break;
                 }
             } else {
                 self.exhausted = true;
-                return Some(res);
+                break;
             }
         }
         Some(res)
@@ -176,11 +189,12 @@ pub fn intersect_iters_detailed_by<
     }
     for (i, iter) in iters.iter_mut().enumerate().skip(1) {
         if let Some(x) = iter.next() {
-            if cmp(&x, &front[max_index]) == Ordering::Greater {
+            front.push(x);
+            if cmp(&front[i], &front[max_index]) == Ordering::Greater {
                 nonmax_index = max_index;
                 max_index = i;
+                break;
             }
-            front.push(x);
         } else {
             return DetailedIntersectIterator {
                 iters,
@@ -222,13 +236,24 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
         }
         let mut cmp = self.max_index.cmp(&self.nonmax_index);
         while cmp != Ordering::Equal {
-            for (i, iter) in self.iters.iter_mut().enumerate() {
+            let index_iter = (self.nonmax_index..self.front.len())
+                .chain(0..self.nonmax_index)
+                .chain(self.front.len()..self.iters.len());
+            for i in index_iter {
                 if i == self.max_index {
                     continue;
                 }
+                if i >= self.front.len() {
+                    if let Some(x) = self.iters[i].next() {
+                        self.front.push(x);
+                    } else {
+                        self.exhausted = true;
+                        return None;
+                    }
+                }
                 cmp = (self.cmp)(&self.front[i], &self.front[self.max_index]);
                 while cmp == Ordering::Less {
-                    if let Some(x) = iter.next() {
+                    if let Some(x) = self.iters[i].next() {
                         cmp = (self.cmp)(&x, &self.front[self.max_index]);
                         self.front[i] = x;
                     } else {
@@ -246,7 +271,7 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
         self.max_index = 0;
         self.nonmax_index = 0;
         let mut res = Vec::with_capacity(self.front.len());
-        for (i, iter) in self.iters.iter_mut().enumerate() {
+        for (i, iter) in self.iters.iter_mut().enumerate().rev() {
             if let Some(mut x) = iter.next() {
                 swap(&mut x, &mut self.front[i]);
                 res.push(x);
