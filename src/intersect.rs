@@ -87,9 +87,8 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
         }
         let mut cmp = self.max_index.cmp(&self.nonmax_index);
         while cmp != Ordering::Equal {
-            let index_iter = (self.nonmax_index..self.front.len())
-                .chain(0..self.nonmax_index)
-                .chain(self.front.len()..self.iters.len());
+            let index_iter =
+                ((0..=self.nonmax_index).rev()).chain((self.nonmax_index + 1)..self.iters.len());
             for i in index_iter {
                 if i == self.max_index {
                     continue;
@@ -236,9 +235,8 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
         }
         let mut cmp = self.max_index.cmp(&self.nonmax_index);
         while cmp != Ordering::Equal {
-            let index_iter = (self.nonmax_index..self.front.len())
-                .chain(0..self.nonmax_index)
-                .chain(self.front.len()..self.iters.len());
+            let index_iter =
+                ((0..=self.nonmax_index).rev()).chain((self.nonmax_index + 1)..self.iters.len());
             for i in index_iter {
                 if i == self.max_index {
                     continue;
