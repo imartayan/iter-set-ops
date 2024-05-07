@@ -2,6 +2,20 @@ use core::cmp::Ordering;
 use core::mem::swap;
 
 /// Iterates over the intersection of many sorted deduplicated iterators.
+///
+/// # Examples
+///
+/// ```
+/// use iter_set_ops::intersect_iters;
+///
+/// let it1 = 1u8..=5;
+/// let it2 = 3u8..=7;
+/// let it3 = 2u8..=4;
+/// let mut iters = [it1, it2, it3];
+/// let res: Vec<_> = intersect_iters(&mut iters).collect();
+///
+/// assert_eq!(res, vec![3, 4]);
+/// ```
 pub fn intersect_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> IntersectIterator<T, I, impl Fn(&T, &T) -> Ordering + 'a> {
@@ -9,6 +23,20 @@ pub fn intersect_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
 }
 
 /// Iterates over the intersection of many sorted deduplicated iterators, using `cmp` as the comparison operator.
+///
+/// # Examples
+///
+/// ```
+/// use iter_set_ops::intersect_iters_by;
+///
+/// let it1 = (1u8..=5).rev();
+/// let it2 = (3u8..=7).rev();
+/// let it3 = (2u8..=4).rev();
+/// let mut iters = [it1, it2, it3];
+/// let res: Vec<_> = intersect_iters_by(&mut iters, |x, y| y.cmp(x)).collect();
+///
+/// assert_eq!(res, vec![4, 3]);
+/// ```
 pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + Copy + 'a>(
     iters: &mut [I],
     cmp: F,
@@ -145,6 +173,20 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
 }
 
 /// Iterates over the intersection of many sorted deduplicated iterators and groups equal items into a [`Vec`].
+///
+/// # Examples
+///
+/// ```
+/// use iter_set_ops::intersect_iters_detailed;
+///
+/// let it1 = 1u8..=5;
+/// let it2 = 3u8..=7;
+/// let it3 = 2u8..=4;
+/// let mut iters = [it1, it2, it3];
+/// let res: Vec<_> = intersect_iters_detailed(&mut iters).collect();
+///
+/// assert_eq!(res, vec![vec![3, 3, 3], vec![4, 4, 4]]);
+/// ```
 pub fn intersect_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> DetailedIntersectIterator<T, I, impl Fn(&T, &T) -> Ordering + 'a> {
@@ -152,6 +194,20 @@ pub fn intersect_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
 }
 
 /// Iterates over the intersection of many sorted deduplicated iterators and groups equal items into a [`Vec`], using `cmp` as the comparison operator.
+///
+/// # Examples
+///
+/// ```
+/// use iter_set_ops::intersect_iters_detailed_by;
+///
+/// let it1 = (1u8..=5).rev();
+/// let it2 = (3u8..=7).rev();
+/// let it3 = (2u8..=4).rev();
+/// let mut iters = [it1, it2, it3];
+/// let res: Vec<_> = intersect_iters_detailed_by(&mut iters, |x, y| y.cmp(x)).collect();
+///
+/// assert_eq!(res, vec![vec![4, 4, 4], vec![3, 3, 3]]);
+/// ```
 pub fn intersect_iters_detailed_by<
     'a,
     T,
@@ -297,19 +353,21 @@ mod tests {
         let it3 = 2u8..=4;
         let mut iters = [it1, it2, it3];
         let res: Vec<_> = intersect_iters(&mut iters).collect();
+
         assert_eq!(res, vec![3, 4]);
         assert!(iters[1].next().is_some());
     }
 
     #[test]
     fn test_intersect_by() {
-        let it1 = 1u8..=5;
-        let it2 = 3u8..=7;
-        let it3 = 2u8..=4;
+        let it1 = (1u8..=5).rev();
+        let it2 = (3u8..=7).rev();
+        let it3 = (2u8..=4).rev();
         let mut iters = [it1, it2, it3];
-        let res: Vec<_> = intersect_iters_by(&mut iters, u8::cmp).collect();
-        assert_eq!(res, vec![3, 4]);
-        assert!(iters[1].next().is_some());
+        let res: Vec<_> = intersect_iters_by(&mut iters, |x, y| y.cmp(x)).collect();
+
+        assert_eq!(res, vec![4, 3]);
+        assert!(iters[0].next().is_some());
     }
 
     #[test]
@@ -319,18 +377,20 @@ mod tests {
         let it3 = 2u8..=4;
         let mut iters = [it1, it2, it3];
         let res: Vec<_> = intersect_iters_detailed(&mut iters).collect();
+
         assert_eq!(res, vec![vec![3, 3, 3], vec![4, 4, 4]]);
         assert!(iters[1].next().is_some());
     }
 
     #[test]
     fn test_intersect_detailed_by() {
-        let it1 = 1u8..=5;
-        let it2 = 3u8..=7;
-        let it3 = 2u8..=4;
+        let it1 = (1u8..=5).rev();
+        let it2 = (3u8..=7).rev();
+        let it3 = (2u8..=4).rev();
         let mut iters = [it1, it2, it3];
-        let res: Vec<_> = intersect_iters_detailed_by(&mut iters, u8::cmp).collect();
-        assert_eq!(res, vec![vec![3, 3, 3], vec![4, 4, 4]]);
-        assert!(iters[1].next().is_some());
+        let res: Vec<_> = intersect_iters_detailed_by(&mut iters, |x, y| y.cmp(x)).collect();
+
+        assert_eq!(res, vec![vec![4, 4, 4], vec![3, 3, 3]]);
+        assert!(iters[0].next().is_some());
     }
 }

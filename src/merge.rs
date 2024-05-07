@@ -5,6 +5,20 @@ use core::mem::swap;
 use core::ops::DerefMut;
 
 /// Iterates over the union of many sorted deduplicated iterators.
+///
+/// # Examples
+///
+/// ```
+/// use iter_set_ops::merge_iters;
+///
+/// let it1 = 1u8..=5;
+/// let it2 = 3u8..=7;
+/// let it3 = 2u8..=4;
+/// let mut iters = [it1, it2, it3];
+/// let res: Vec<_> = merge_iters(&mut iters).collect();
+///
+/// assert_eq!(res, vec![1, 2, 3, 4, 5, 6, 7]);
+/// ```
 pub fn merge_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> MergeIterator<
@@ -17,6 +31,20 @@ pub fn merge_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
 }
 
 /// Iterates over the union of many sorted deduplicated iterators, using `cmp` as the comparison operator.
+///
+/// # Examples
+///
+/// ```
+/// use iter_set_ops::merge_iters_by;
+///
+/// let it1 = (1u8..=5).rev();
+/// let it2 = (3u8..=7).rev();
+/// let it3 = (2u8..=4).rev();
+/// let mut iters = [it1, it2, it3];
+/// let res: Vec<_> = merge_iters_by(&mut iters, |x, y| y.cmp(x)).collect();
+///
+/// assert_eq!(res, vec![7, 6, 5, 4, 3, 2, 1]);
+/// ```
 pub fn merge_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering + Copy + 'a>(
     iters: &mut [I],
     cmp: F,
@@ -81,7 +109,20 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize,
     }
 }
 
-/// Iterates over the union of many sorted deduplicated iterators and groups equal items into a [`Vec`] of `Option<T>`.
+/// Iterates over the union of many sorted deduplicated iterators and groups equal items with their indices into a [`Vec`].
+///
+/// # Examples
+///
+/// ```
+/// use iter_set_ops::merge_iters_detailed;
+///
+/// let it1 = 1u8..=2;
+/// let it2 = 2u8..=3;
+/// let mut iters = [it1, it2];
+/// let res: Vec<_> = merge_iters_detailed(&mut iters).collect();
+///
+/// assert_eq!(res, vec![vec![(0, 1)], vec![(1, 2), (0, 2)], vec![(1, 3)]]);
+/// ```
 pub fn merge_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> DetailedMergeIterator<
@@ -93,7 +134,20 @@ pub fn merge_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     merge_iters_detailed_by(iters, T::cmp)
 }
 
-/// Iterates over the union of many sorted deduplicated iterators and groups equal items into a [`Vec`] of `Option<T>`, using `cmp` as the comparison operator.
+/// Iterates over the union of many sorted deduplicated iterators and groups equal items with their indices into a [`Vec`], using `cmp` as the comparison operator.
+///
+/// # Examples
+///
+/// ```
+/// use iter_set_ops::merge_iters_detailed_by;
+///
+/// let it1 = (1u8..=2).rev();
+/// let it2 = (2u8..=3).rev();
+/// let mut iters = [it1, it2];
+/// let res: Vec<_> = merge_iters_detailed_by(&mut iters, |x, y| y.cmp(x)).collect();
+///
+/// assert_eq!(res, vec![vec![(1, 3)], vec![(0, 2), (1, 2)], vec![(0, 1)]]);
+/// ```
 pub fn merge_iters_detailed_by<
     'a,
     T,
@@ -178,18 +232,20 @@ mod tests {
         let it3 = 2u8..=4;
         let mut iters = [it1, it2, it3];
         let res: Vec<_> = merge_iters(&mut iters).collect();
+
         assert_eq!(res, vec![1, 2, 3, 4, 5, 6, 7]);
         assert!(iters[1].next().is_none());
     }
 
     #[test]
     fn test_merge_by() {
-        let it1 = 1u8..=5;
-        let it2 = 3u8..=7;
-        let it3 = 2u8..=4;
+        let it1 = (1u8..=5).rev();
+        let it2 = (3u8..=7).rev();
+        let it3 = (2u8..=4).rev();
         let mut iters = [it1, it2, it3];
-        let res: Vec<_> = merge_iters_by(&mut iters, u8::cmp).collect();
-        assert_eq!(res, vec![1, 2, 3, 4, 5, 6, 7]);
+        let res: Vec<_> = merge_iters_by(&mut iters, |x, y| y.cmp(x)).collect();
+
+        assert_eq!(res, vec![7, 6, 5, 4, 3, 2, 1]);
         assert!(iters[1].next().is_none());
     }
 
@@ -199,17 +255,19 @@ mod tests {
         let it2 = 2u8..=3;
         let mut iters = [it1, it2];
         let res: Vec<_> = merge_iters_detailed(&mut iters).collect();
+
         assert_eq!(res, vec![vec![(0, 1)], vec![(1, 2), (0, 2)], vec![(1, 3)]]);
         assert!(iters[1].next().is_none());
     }
 
     #[test]
     fn test_merge_detailed_by() {
-        let it1 = 1u8..=2;
-        let it2 = 2u8..=3;
+        let it1 = (1u8..=2).rev();
+        let it2 = (2u8..=3).rev();
         let mut iters = [it1, it2];
-        let res: Vec<_> = merge_iters_detailed_by(&mut iters, u8::cmp).collect();
-        assert_eq!(res, vec![vec![(0, 1)], vec![(1, 2), (0, 2)], vec![(1, 3)]]);
+        let res: Vec<_> = merge_iters_detailed_by(&mut iters, |x, y| y.cmp(x)).collect();
+
+        assert_eq!(res, vec![vec![(1, 3)], vec![(0, 2), (1, 2)], vec![(0, 1)]]);
         assert!(iters[1].next().is_none());
     }
 }

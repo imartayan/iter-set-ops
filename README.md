@@ -15,7 +15,7 @@ Fast set operations on an arbitrary number of sorted deduplicated iterators.
 ## Example usage
 
 ```rust
-use iter_set_ops::*;
+use iter_set_ops::intersect_iters;
 
 let it1 = 1u8..=5;
 let it2 = 3u8..=7;
@@ -24,6 +24,7 @@ let mut iters = [it1, it2, it3];
 
 // intersect it1, it2 and it3
 let res: Vec<_> = intersect_iters(&mut iters).collect();
+
 assert_eq!(res, vec![3, 4]);
 
 // the computation stops before exhausting all the iterators
@@ -31,7 +32,21 @@ assert!(iters[1].next().is_some());
 ```
 
 ```rust
-use iter_set_ops::*;
+use iter_set_ops::merge_iters_by;
+
+let it1 = (1u8..=5).rev();
+let it2 = (3u8..=7).rev();
+let it3 = (2u8..=4).rev();
+let mut iters = [it1, it2, it3];
+
+// merge it1, it2 and it3 using a reverse comparison operator
+let res: Vec<_> = merge_iters_by(&mut iters, |x, y| y.cmp(x)).collect();
+
+assert_eq!(res, vec![7, 6, 5, 4, 3, 2, 1]);
+```
+
+```rust
+use iter_set_ops::merge_iters_detailed;
 
 let it1 = 1u8..=2;
 let it2 = 2u8..=3;
@@ -39,6 +54,7 @@ let mut iters = [it1, it2];
 
 // merge it1 and it2 while keeping the details of each item
 let res: Vec<_> = merge_iters_detailed(&mut iters).collect();
+
 assert_eq!(
     res,
     vec![
