@@ -329,7 +329,9 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
             if let Some(mut x) = iter.next() {
                 swap(&mut x, &mut self.front[i]);
                 res.push(x);
-                if (self.cmp)(&self.front[i], &self.front[self.max_index]) == Ordering::Greater {
+                if !self.exhausted
+                    && (self.cmp)(&self.front[i], &self.front[self.max_index]) == Ordering::Greater
+                {
                     self.nonmax_index = self.max_index;
                     self.max_index = i;
                 }
