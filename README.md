@@ -14,7 +14,7 @@ Fast set operations on an arbitrary number of sorted deduplicated iterators.
 
 ## Example usage
 
-```rs
+```rust
 use iter_set_ops::*;
 
 let it1 = 1u8..=5;
@@ -22,7 +22,7 @@ let it2 = 3u8..=7;
 let it3 = 2u8..=4;
 let mut iters = [it1, it2, it3];
 
-// intersect the it1, it2 and it3
+// intersect it1, it2 and it3
 let res: Vec<_> = intersect_iters(&mut iters).collect();
 assert_eq!(res, vec![3, 4]);
 
@@ -30,7 +30,7 @@ assert_eq!(res, vec![3, 4]);
 assert!(iters[1].next().is_some());
 ```
 
-```rs
+```rust
 use iter_set_ops::*;
 
 let it1 = 1u8..=2;
