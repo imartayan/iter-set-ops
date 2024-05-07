@@ -130,11 +130,11 @@ pub struct DetailedMergeIterator<
 impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize, T)>> Iterator
     for DetailedMergeIterator<'a, T, I, F, C>
 {
-    type Item = Vec<Option<T>>;
+    type Item = Vec<(usize, T)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.heap.is_empty() {
-            let mut details = Vec::from_iter((0..self.iters.len()).map(|_| None));
+            let mut details = Vec::new();
             let (i, res) = {
                 let mut peek = self.heap.peek_mut().unwrap();
                 let entry = peek.deref_mut();
@@ -150,16 +150,16 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize,
                     let entry = peek.deref_mut();
                     if let Some(mut x) = self.iters[entry.0].next() {
                         swap(&mut entry.1, &mut x);
-                        details[entry.0] = Some(x);
+                        details.push((entry.0, x));
                     } else {
                         let (j, x) = PeekMut::pop(peek);
-                        details[j] = Some(x);
+                        details.push((j, x));
                     }
                 } else {
                     break;
                 }
             }
-            details[i] = Some(res);
+            details.push((i, res));
             Some(details)
         } else {
             None
@@ -199,14 +199,7 @@ mod tests {
         let it2 = 2u8..=3;
         let mut iters = [it1, it2];
         let res: Vec<_> = merge_iters_detailed(&mut iters).collect();
-        assert_eq!(
-            res,
-            vec![
-                vec![Some(1), None],
-                vec![Some(2), Some(2)],
-                vec![None, Some(3)]
-            ]
-        );
+        assert_eq!(res, vec![vec![(0, 1)], vec![(1, 2), (0, 2)], vec![(1, 3)]]);
         assert!(iters[1].next().is_none());
     }
 
@@ -216,14 +209,7 @@ mod tests {
         let it2 = 2u8..=3;
         let mut iters = [it1, it2];
         let res: Vec<_> = merge_iters_detailed_by(&mut iters, u8::cmp).collect();
-        assert_eq!(
-            res,
-            vec![
-                vec![Some(1), None],
-                vec![Some(2), Some(2)],
-                vec![None, Some(3)]
-            ]
-        );
+        assert_eq!(res, vec![vec![(0, 1)], vec![(1, 2), (0, 2)], vec![(1, 3)]]);
         assert!(iters[1].next().is_none());
     }
 }
