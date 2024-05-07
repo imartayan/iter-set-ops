@@ -42,9 +42,9 @@ let res: Vec<_> = merge_iters_detailed(&mut iters).collect();
 assert_eq!(
     res,
     vec![
-        vec![Some(1), None], // `1` comes from it1
-        vec![Some(2), Some(2)], // `2` comes from both
-        vec![None, Some(3)] // `3` comes from it2
+        vec![(0, 1)], // `1` comes from the first iterator
+        vec![(1, 2), (0, 2)], // `2` comes from both iterators
+        vec![(1, 3)] // `3` comes from the second iterator
     ]
 );
 ```
