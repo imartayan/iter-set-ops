@@ -224,6 +224,8 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+    use std::collections::HashSet;
 
     #[test]
     fn test_merge() {
@@ -269,5 +271,42 @@ mod tests {
 
         assert_eq!(res, vec![vec![(1, 3)], vec![(0, 2), (1, 2)], vec![(0, 1)]]);
         assert!(iters[1].next().is_none());
+    }
+
+    #[test]
+    fn test_large_merge() {
+        const C: usize = 10;
+        const N: usize = 100_000;
+
+        let mut iters: Vec<_> = (0..C).map(|i| (0..(C * N)).skip(i).step_by(C)).collect();
+        let res: Vec<_> = merge_iters(&mut iters).collect();
+
+        let expected: Vec<_> = (0..(C * N)).collect();
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_random_merge() {
+        const C: usize = 10;
+        const N: usize = 10_000;
+
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut vecs = Vec::with_capacity(C);
+        for _ in 0..C {
+            let mut vec = Vec::with_capacity(N);
+            for _ in 0..N {
+                vec.push(rng.gen::<u16>());
+            }
+            vec.sort_unstable();
+            vecs.push(vec);
+        }
+        let mut iters: Vec<_> = vecs.iter().map(|v| v.iter()).collect();
+        let res: HashSet<_> = merge_iters(&mut iters).collect();
+
+        for vec in vecs.iter() {
+            for x in vec {
+                assert!(res.contains(x));
+            }
+        }
     }
 }
