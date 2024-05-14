@@ -1,6 +1,6 @@
 [package]
 name = "iter-set-ops"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Igor Martayan <imartayan@users.noreply.github.com>"]
 description = "Fast set operations on an arbitrary number of sorted deduplicated iterators"
 readme = "README.md"
