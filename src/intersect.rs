@@ -44,6 +44,7 @@ pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Orderin
     let mut front: Vec<T> = Vec::with_capacity(iters.len());
     let mut max_index = 0;
     let mut nonmax_index = 0;
+    let mut all_equal = true;
     if iters.is_empty() {
         return IntersectIterator {
             iters,
@@ -51,6 +52,7 @@ pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Orderin
             front,
             max_index,
             nonmax_index,
+            all_equal,
             exhausted: true,
         };
     }
@@ -63,16 +65,26 @@ pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Orderin
             front,
             max_index,
             nonmax_index,
+            all_equal,
             exhausted: true,
         };
     }
     for (i, iter) in iters.iter_mut().enumerate().skip(1) {
         if let Some(x) = iter.next() {
             front.push(x);
-            if cmp(&front[i], &front[max_index]) == Ordering::Greater {
-                nonmax_index = max_index;
-                max_index = i;
-                break;
+            match cmp(&front[i], &front[max_index]) {
+                Ordering::Less => {
+                    nonmax_index = i;
+                    all_equal = false;
+                    break;
+                }
+                Ordering::Greater => {
+                    nonmax_index = max_index;
+                    max_index = i;
+                    all_equal = false;
+                    break;
+                }
+                _ => (),
             }
         } else {
             return IntersectIterator {
@@ -81,6 +93,7 @@ pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Orderin
                 front,
                 max_index,
                 nonmax_index,
+                all_equal,
                 exhausted: true,
             };
         }
@@ -91,6 +104,7 @@ pub fn intersect_iters_by<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Orderin
         front,
         max_index,
         nonmax_index,
+        all_equal,
         exhausted: false,
     }
 }
@@ -101,6 +115,7 @@ pub struct IntersectIterator<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Orde
     front: Vec<T>,
     max_index: usize,
     nonmax_index: usize,
+    all_equal: bool,
     exhausted: bool,
 }
 
@@ -113,14 +128,11 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
         if self.exhausted {
             return None;
         }
-        let mut cmp = self.max_index.cmp(&self.nonmax_index);
-        while cmp != Ordering::Equal {
-            let index_iter =
-                ((0..=self.nonmax_index).rev()).chain((self.nonmax_index + 1)..self.iters.len());
+        'until_all_equal: while !self.all_equal {
+            let index_iter = ((0..=self.nonmax_index).rev())
+                .chain((self.nonmax_index + 1)..self.iters.len())
+                .filter(|&i| i != self.max_index);
             for i in index_iter {
-                if i == self.max_index {
-                    continue;
-                }
                 if i >= self.front.len() {
                     if let Some(x) = self.iters[i].next() {
                         self.front.push(x);
@@ -129,39 +141,50 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
                         return None;
                     }
                 }
-                cmp = (self.cmp)(&self.front[i], &self.front[self.max_index]);
-                while cmp == Ordering::Less {
+                let mut ord = (self.cmp)(&self.front[i], &self.front[self.max_index]);
+                while ord.is_lt() {
                     if let Some(x) = self.iters[i].next() {
-                        cmp = (self.cmp)(&x, &self.front[self.max_index]);
+                        ord = (self.cmp)(&x, &self.front[self.max_index]);
                         self.front[i] = x;
                     } else {
                         self.exhausted = true;
                         return None;
                     }
                 }
-                if cmp == Ordering::Greater {
+                if ord.is_gt() {
                     self.nonmax_index = self.max_index;
                     self.max_index = i;
-                    break;
+                    continue 'until_all_equal;
                 }
             }
+            self.all_equal = true;
         }
-        let res = if let Some(mut x) = self.iters[0].next() {
-            swap(&mut x, &mut self.front[0]);
+        let res = if let Some(mut x) = self.iters[self.max_index].next() {
+            swap(&mut x, &mut self.front[self.max_index]);
             x
         } else {
             self.exhausted = true;
-            return Some(self.front.swap_remove(0));
+            return Some(self.front.swap_remove(self.max_index));
         };
-        self.max_index = 0;
-        self.nonmax_index = 0;
-        for (i, iter) in self.iters.iter_mut().enumerate().skip(1) {
-            if let Some(x) = iter.next() {
+        let index_iter = ((0..=self.nonmax_index).rev())
+            .chain((self.nonmax_index + 1)..self.iters.len())
+            .filter(|&i| i != self.max_index);
+        for i in index_iter {
+            if let Some(x) = self.iters[i].next() {
                 self.front[i] = x;
-                if (self.cmp)(&self.front[i], &self.front[self.max_index]) == Ordering::Greater {
-                    self.nonmax_index = self.max_index;
-                    self.max_index = i;
-                    break;
+                match (self.cmp)(&self.front[i], &self.front[self.max_index]) {
+                    Ordering::Less => {
+                        self.nonmax_index = i;
+                        self.all_equal = false;
+                        break;
+                    }
+                    Ordering::Greater => {
+                        self.nonmax_index = self.max_index;
+                        self.max_index = i;
+                        self.all_equal = false;
+                        break;
+                    }
+                    _ => (),
                 }
             } else {
                 self.exhausted = true;
@@ -220,6 +243,7 @@ pub fn intersect_iters_detailed_by<
     let mut front: Vec<T> = Vec::with_capacity(iters.len());
     let mut max_index = 0;
     let mut nonmax_index = 0;
+    let mut all_equal = true;
     if iters.is_empty() {
         return DetailedIntersectIterator {
             iters,
@@ -227,6 +251,7 @@ pub fn intersect_iters_detailed_by<
             front,
             max_index,
             nonmax_index,
+            all_equal,
             exhausted: true,
         };
     }
@@ -239,16 +264,26 @@ pub fn intersect_iters_detailed_by<
             front,
             max_index,
             nonmax_index,
+            all_equal,
             exhausted: true,
         };
     }
     for (i, iter) in iters.iter_mut().enumerate().skip(1) {
         if let Some(x) = iter.next() {
             front.push(x);
-            if cmp(&front[i], &front[max_index]) == Ordering::Greater {
-                nonmax_index = max_index;
-                max_index = i;
-                break;
+            match cmp(&front[i], &front[max_index]) {
+                Ordering::Less => {
+                    nonmax_index = i;
+                    all_equal = false;
+                    break;
+                }
+                Ordering::Greater => {
+                    nonmax_index = max_index;
+                    max_index = i;
+                    all_equal = false;
+                    break;
+                }
+                _ => (),
             }
         } else {
             return DetailedIntersectIterator {
@@ -257,6 +292,7 @@ pub fn intersect_iters_detailed_by<
                 front,
                 max_index,
                 nonmax_index,
+                all_equal,
                 exhausted: true,
             };
         }
@@ -267,6 +303,7 @@ pub fn intersect_iters_detailed_by<
         front,
         max_index,
         nonmax_index,
+        all_equal,
         exhausted: false,
     }
 }
@@ -277,6 +314,7 @@ pub struct DetailedIntersectIterator<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T)
     front: Vec<T>,
     max_index: usize,
     nonmax_index: usize,
+    all_equal: bool,
     exhausted: bool,
 }
 
@@ -289,14 +327,11 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
         if self.exhausted {
             return None;
         }
-        let mut cmp = self.max_index.cmp(&self.nonmax_index);
-        while cmp != Ordering::Equal {
-            let index_iter =
-                ((0..=self.nonmax_index).rev()).chain((self.nonmax_index + 1)..self.iters.len());
+        'until_all_equal: while !self.all_equal {
+            let index_iter = ((0..=self.nonmax_index).rev())
+                .chain((self.nonmax_index + 1)..self.iters.len())
+                .filter(|&i| i != self.max_index);
             for i in index_iter {
-                if i == self.max_index {
-                    continue;
-                }
                 if i >= self.front.len() {
                     if let Some(x) = self.iters[i].next() {
                         self.front.push(x);
@@ -305,22 +340,23 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
                         return None;
                     }
                 }
-                cmp = (self.cmp)(&self.front[i], &self.front[self.max_index]);
-                while cmp == Ordering::Less {
+                let mut ord = (self.cmp)(&self.front[i], &self.front[self.max_index]);
+                while ord.is_lt() {
                     if let Some(x) = self.iters[i].next() {
-                        cmp = (self.cmp)(&x, &self.front[self.max_index]);
+                        ord = (self.cmp)(&x, &self.front[self.max_index]);
                         self.front[i] = x;
                     } else {
                         self.exhausted = true;
                         return None;
                     }
                 }
-                if cmp == Ordering::Greater {
+                if ord.is_gt() {
                     self.nonmax_index = self.max_index;
                     self.max_index = i;
-                    break;
+                    continue 'until_all_equal;
                 }
             }
+            self.all_equal = true;
         }
         self.max_index = 0;
         self.nonmax_index = 0;
@@ -329,11 +365,19 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
             if let Some(mut x) = iter.next() {
                 swap(&mut x, &mut self.front[i]);
                 res.push(x);
-                if !self.exhausted
-                    && (self.cmp)(&self.front[i], &self.front[self.max_index]) == Ordering::Greater
-                {
-                    self.nonmax_index = self.max_index;
-                    self.max_index = i;
+                if !self.exhausted {
+                    match (self.cmp)(&self.front[i], &self.front[self.max_index]) {
+                        Ordering::Less => {
+                            self.nonmax_index = i;
+                            self.all_equal = false;
+                        }
+                        Ordering::Greater => {
+                            self.nonmax_index = self.max_index;
+                            self.max_index = i;
+                            self.all_equal = false;
+                        }
+                        _ => (),
+                    }
                 }
             } else {
                 self.exhausted = true;
@@ -347,6 +391,8 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+    use std::collections::HashSet;
 
     #[test]
     fn test_intersect() {
@@ -358,6 +404,17 @@ mod tests {
 
         assert_eq!(res, vec![3, 4]);
         assert!(iters[1].next().is_some());
+    }
+
+    #[test]
+    fn test_intersect_pair() {
+        let it1 = 3u8..=7;
+        let it2 = 2u8..=4;
+        let mut iters = [it1, it2];
+        let res: Vec<_> = intersect_iters(&mut iters).collect();
+
+        assert_eq!(res, vec![3, 4]);
+        assert!(iters[0].next().is_some());
     }
 
     #[test]
@@ -394,5 +451,35 @@ mod tests {
 
         assert_eq!(res, vec![vec![4, 4, 4], vec![3, 3, 3]]);
         assert!(iters[0].next().is_some());
+    }
+
+    #[test]
+    fn test_random_intersect() {
+        const C: usize = 5;
+        const N: usize = 100_000;
+
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut vecs = Vec::with_capacity(C);
+        for _ in 0..C {
+            let mut vec = Vec::with_capacity(N);
+            for _ in 0..N {
+                vec.push(rng.gen::<u16>());
+            }
+            vec.sort_unstable();
+            vec.dedup();
+            vecs.push(vec);
+        }
+        let mut iters: Vec<_> = vecs.iter().map(|v| v.iter()).collect();
+        let res: HashSet<_> = intersect_iters(&mut iters).collect();
+        let sets: Vec<HashSet<u16>> = vecs
+            .iter()
+            .map(|vec| vec.iter().copied().collect())
+            .collect();
+
+        for x in res {
+            for set in sets.iter() {
+                assert!(set.contains(x));
+            }
+        }
     }
 }
