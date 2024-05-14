@@ -384,6 +384,7 @@ impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
                 res.push(self.front.swap_remove(i));
             }
         }
+        res.reverse();
         Some(res)
     }
 }
@@ -479,6 +480,32 @@ mod tests {
         for x in res {
             for set in sets.iter() {
                 assert!(set.contains(x));
+            }
+        }
+    }
+
+    #[test]
+    fn test_intersect_preserve_details() {
+        const C: usize = 5;
+        const N: usize = 100_000;
+
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut vecs = Vec::with_capacity(C);
+        for i in 0..C {
+            let mut vec = Vec::with_capacity(N);
+            for _ in 0..N {
+                vec.push((i, rng.gen::<u16>()));
+            }
+            vec.sort_unstable();
+            vec.dedup();
+            vecs.push(vec);
+        }
+        let mut iters: Vec<_> = vecs.iter().map(|v| v.iter()).collect();
+        for details in intersect_iters_detailed_by(&mut iters, |(_, x), (_, y)| x.cmp(y)) {
+            let x = details[0].1;
+            for (i, &&(j, y)) in details.iter().enumerate() {
+                assert_eq!(x, y);
+                assert_eq!(i, j);
             }
         }
     }
