@@ -298,6 +298,7 @@ mod tests {
                 vec.push(rng.gen::<u16>());
             }
             vec.sort_unstable();
+            vec.dedup();
             vecs.push(vec);
         }
         let mut iters: Vec<_> = vecs.iter().map(|v| v.iter()).collect();
