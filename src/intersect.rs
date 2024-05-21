@@ -512,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_associative_intersect() {
-        const C: usize = 5;
+        const C: usize = 6;
         const N: usize = 100_000;
 
         let mut rng = StdRng::seed_from_u64(42);
@@ -528,13 +528,13 @@ mod tests {
         }
 
         let mut iters: Vec<_> = vecs.iter().map(|v| v.iter()).collect();
-        let res10: HashSet<_> = intersect_iters(&mut iters).collect();
+        let res6: HashSet<_> = intersect_iters(&mut iters).collect();
 
         let mut nested_iters: Vec<Vec<_>> = (0..C)
-            .step_by(5)
-            .map(|i| vecs.iter().skip(i).take(5).map(|v| v.iter()).collect())
+            .step_by(3)
+            .map(|i| vecs.iter().skip(i).take(3).map(|v| v.iter()).collect())
             .collect();
-        let res5: HashSet<_> = intersect_iters(
+        let res3: HashSet<_> = intersect_iters(
             &mut nested_iters
                 .iter_mut()
                 .map(|inner_iters| intersect_iters(inner_iters))
@@ -554,7 +554,7 @@ mod tests {
         )
         .collect();
 
-        assert_eq!(res10, res5);
-        assert_eq!(res10, res2);
+        assert_eq!(res6, res3);
+        assert_eq!(res6, res2);
     }
 }
