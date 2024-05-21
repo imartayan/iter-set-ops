@@ -310,4 +310,52 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_associative_merge() {
+        const C: usize = 10;
+        const N: usize = 10_000;
+
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut vecs = Vec::with_capacity(C);
+        for _ in 0..C {
+            let mut vec = Vec::with_capacity(N);
+            for _ in 0..N {
+                vec.push(rng.gen::<u16>());
+            }
+            vec.sort_unstable();
+            vec.dedup();
+            vecs.push(vec);
+        }
+
+        let mut iters: Vec<_> = vecs.iter().map(|v| v.iter()).collect();
+        let res10: HashSet<_> = merge_iters(&mut iters).collect();
+
+        let mut nested_iters: Vec<Vec<_>> = (0..C)
+            .step_by(5)
+            .map(|i| vecs.iter().skip(i).take(5).map(|v| v.iter()).collect())
+            .collect();
+        let res5: HashSet<_> = merge_iters(
+            &mut nested_iters
+                .iter_mut()
+                .map(|inner_iters| merge_iters(inner_iters))
+                .collect::<Vec<_>>(),
+        )
+        .collect();
+
+        let mut nested_iters: Vec<Vec<_>> = (0..C)
+            .step_by(2)
+            .map(|i| vecs.iter().skip(i).take(2).map(|v| v.iter()).collect())
+            .collect();
+        let res2: HashSet<_> = merge_iters(
+            &mut nested_iters
+                .iter_mut()
+                .map(|inner_iters| merge_iters(inner_iters))
+                .collect::<Vec<_>>(),
+        )
+        .collect();
+
+        assert_eq!(res10, res5);
+        assert_eq!(res10, res2);
+    }
 }
