@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 mod intersect;
 mod merge;
 mod subtract;

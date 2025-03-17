@@ -119,8 +119,8 @@ pub struct IntersectIterator<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Orde
     exhausted: bool,
 }
 
-impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
-    for IntersectIterator<'a, T, I, F>
+impl<T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
+    for IntersectIterator<'_, T, I, F>
 {
     type Item = T;
 
@@ -318,8 +318,8 @@ pub struct DetailedIntersectIterator<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T)
     exhausted: bool,
 }
 
-impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
-    for DetailedIntersectIterator<'a, T, I, F>
+impl<T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
+    for DetailedIntersectIterator<'_, T, I, F>
 {
     type Item = Vec<T>;
 

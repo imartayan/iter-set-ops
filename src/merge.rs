@@ -73,8 +73,8 @@ pub struct MergeIterator<
     heap: BinaryHeap<(usize, T), C>,
 }
 
-impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize, T)>> Iterator
-    for MergeIterator<'a, T, I, F, C>
+impl<T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize, T)>> Iterator
+    for MergeIterator<'_, T, I, F, C>
 {
     type Item = T;
 
@@ -181,8 +181,8 @@ pub struct DetailedMergeIterator<
     heap: BinaryHeap<(usize, T), C>,
 }
 
-impl<'a, T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize, T)>> Iterator
-    for DetailedMergeIterator<'a, T, I, F, C>
+impl<T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize, T)>> Iterator
+    for DetailedMergeIterator<'_, T, I, F, C>
 {
     type Item = Vec<(usize, T)>;
 
