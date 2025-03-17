@@ -16,6 +16,7 @@ use core::mem::swap;
 ///
 /// assert_eq!(res, vec![3, 4]);
 /// ```
+#[inline]
 pub fn intersect_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> IntersectIterator<T, I, impl Fn(&T, &T) -> Ordering + 'a> {
@@ -210,6 +211,7 @@ impl<T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering> Iterator
 ///
 /// assert_eq!(res, vec![vec![3, 3, 3], vec![4, 4, 4]]);
 /// ```
+#[inline]
 pub fn intersect_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> DetailedIntersectIterator<T, I, impl Fn(&T, &T) -> Ordering + 'a> {

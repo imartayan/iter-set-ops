@@ -19,6 +19,7 @@ use core::ops::DerefMut;
 ///
 /// assert_eq!(res, vec![1, 2, 3, 4, 5, 6, 7]);
 /// ```
+#[inline]
 pub fn merge_iters<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> MergeIterator<
@@ -123,6 +124,7 @@ impl<T, I: Iterator<Item = T>, F: Fn(&T, &T) -> Ordering, C: Compare<(usize, T)>
 ///
 /// assert_eq!(res, vec![vec![(0, 1)], vec![(1, 2), (0, 2)], vec![(1, 3)]]);
 /// ```
+#[inline]
 pub fn merge_iters_detailed<'a, T: Ord + 'a, I: Iterator<Item = T>>(
     iters: &mut [I],
 ) -> DetailedMergeIterator<

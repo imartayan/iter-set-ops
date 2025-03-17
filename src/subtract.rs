@@ -15,6 +15,7 @@ use core::mem::swap;
 ///
 /// assert_eq!(res, vec![1, 5]);
 /// ```
+#[inline]
 pub fn subtract_iters<T: Ord, I: Iterator<Item = T>, J: Iterator<Item = T>>(
     left_iter: I,
     right_iters: Vec<J>,
